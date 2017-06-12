@@ -150,7 +150,7 @@ void TeamcityBoostLogFormatter::test_unit_finish(std::ostream &out, boost::unit_
             }
         }
 
-        messages.testFinished(tu.p_name, elapsed / 1000, flowId);
+        messages.testFinished(tu.p_name, static_cast<int>(elapsed / 1000), flowId);
     } else {
         messages.suiteFinished(tu.p_name, flowId);
     }
