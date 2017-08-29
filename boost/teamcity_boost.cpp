@@ -53,36 +53,36 @@ public:
 
     virtual ~TeamcityBoostLogFormatter() {}
 
-    virtual void log_start(std::ostream&, boost::unit_test::counter_t test_cases_amount);
-    virtual void log_finish(std::ostream&);
-    virtual void log_build_info(std::ostream&);
+    virtual void log_start(std::ostream&, boost::unit_test::counter_t test_cases_amount) override;
+    virtual void log_finish(std::ostream&) override;
+    virtual void log_build_info(std::ostream&) override;
 
-    virtual void test_unit_start(std::ostream&, boost::unit_test::test_unit const& tu);
+    virtual void test_unit_start(std::ostream&, boost::unit_test::test_unit const& tu) override;
     virtual void test_unit_finish(std::ostream&,
         boost::unit_test::test_unit const& tu,
-        unsigned long elapsed);
-    virtual void test_unit_skipped(std::ostream&, boost::unit_test::test_unit const& tu);
+        unsigned long elapsed) override;
+    virtual void test_unit_skipped(std::ostream&, boost::unit_test::test_unit const& tu) override;
     virtual void test_unit_skipped(std::ostream&,
         boost::unit_test::test_unit const& tu,
-        boost::unit_test::const_string reason);
+        boost::unit_test::const_string reason) override;
 
     virtual void log_exception(std::ostream&,
         boost::unit_test::log_checkpoint_data const&,
         boost::unit_test::const_string explanation);
     virtual void log_exception_start(std::ostream&,
         boost::unit_test::log_checkpoint_data const&,
-        const boost::execution_exception&);
-    virtual void log_exception_finish(std::ostream&);
+        const boost::execution_exception&) override;
+    virtual void log_exception_finish(std::ostream&) override;
 
     virtual void log_entry_start(std::ostream & out,
         boost::unit_test::log_entry_data const & entry_data,
-        log_entry_types let);
-    virtual void log_entry_value(std::ostream&, boost::unit_test::const_string value);
-    virtual void log_entry_finish(std::ostream&);
+        log_entry_types let) override;
+    virtual void log_entry_value(std::ostream&, boost::unit_test::const_string value) override;
+    virtual void log_entry_finish(std::ostream&) override;
 
-    virtual void entry_context_start(std::ostream&, boost::unit_test::log_level);
-    virtual void log_entry_context(std::ostream&, boost::unit_test::const_string);
-    virtual void entry_context_finish(std::ostream&);
+    virtual void entry_context_start(std::ostream&, boost::unit_test::log_level) override;
+    virtual void log_entry_context(std::ostream&, boost::unit_test::log_level, boost::unit_test::const_string) override;
+    virtual void entry_context_finish(std::ostream&, boost::unit_test::log_level) override;
 };
 
 // Fake fixture to register formatter
@@ -204,12 +204,12 @@ void TeamcityBoostLogFormatter::entry_context_start(std::ostream &out, boost::un
     currentContextDetails = initial_msg;
 }
 
-void TeamcityBoostLogFormatter::log_entry_context(std::ostream &out, boost::unit_test::const_string ctx) {
+void TeamcityBoostLogFormatter::log_entry_context(std::ostream &out, boost::unit_test::log_level, boost::unit_test::const_string ctx) {
     out << "\n " << ctx;
     currentContextDetails += "\n " + toString(ctx);
 }
 
-void TeamcityBoostLogFormatter::entry_context_finish(std::ostream &out) {
+void TeamcityBoostLogFormatter::entry_context_finish(std::ostream &out, boost::unit_test::log_level) {
     out.flush();
     messages.testOutput(CURRENT_TEST_NAME, currentContextDetails, flowId, TeamcityMessages::StdErr);
 }
