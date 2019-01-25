@@ -22,7 +22,11 @@
 #include <boost/test/unit_test_log.hpp>
 #include <boost/test/execution_monitor.hpp>
 #include <boost/test/unit_test_log_formatter.hpp>
+
+#include <leathers/push>
+#include <leathers/all>
 #include <boost/test/unit_test.hpp>
+#include <leathers/pop>
 
 // In 1.59.0, they changed the name of this enum value, so we have to this hacky thing...
 #include <boost/version.hpp>
