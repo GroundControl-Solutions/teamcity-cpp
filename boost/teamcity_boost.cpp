@@ -55,38 +55,49 @@ public:
     TeamcityBoostLogFormatter(const std::string &_flowId);
     TeamcityBoostLogFormatter();
 
-    virtual ~TeamcityBoostLogFormatter() {}
+    ~TeamcityBoostLogFormatter() override {}
 
-    virtual void log_start(std::ostream&, boost::unit_test::counter_t test_cases_amount) override;
-    virtual void log_finish(std::ostream&) override;
-    virtual void log_build_info(std::ostream&) override;
+    void log_start(std::ostream&, boost::unit_test::counter_t test_cases_amount) override;
+    void log_finish(std::ostream&) override;
+    void log_build_info(std::ostream&, bool log_build_info) override;
 
-    virtual void test_unit_start(std::ostream&, boost::unit_test::test_unit const& tu) override;
-    virtual void test_unit_finish(std::ostream&,
+    void test_unit_start(std::ostream&, boost::unit_test::test_unit const& tu) override;
+    void test_unit_finish(std::ostream&,
         boost::unit_test::test_unit const& tu,
         unsigned long elapsed) override;
-    virtual void test_unit_skipped(std::ostream&, boost::unit_test::test_unit const& tu) override;
-    virtual void test_unit_skipped(std::ostream&,
+    void test_unit_skipped(std::ostream&, boost::unit_test::test_unit const& tu) override;
+    void test_unit_skipped(std::ostream&,
         boost::unit_test::test_unit const& tu,
         boost::unit_test::const_string reason) override;
 
-    virtual void log_exception(std::ostream&,
+    void log_exception(std::ostream&,
         boost::unit_test::log_checkpoint_data const&,
         boost::unit_test::const_string explanation);
-    virtual void log_exception_start(std::ostream&,
+    void log_exception_start(std::ostream&,
         boost::unit_test::log_checkpoint_data const&,
         const boost::execution_exception&) override;
     virtual void log_exception_finish(std::ostream&) override;
 
-    virtual void log_entry_start(std::ostream & out,
+    void log_entry_start(std::ostream & out,
         boost::unit_test::log_entry_data const & entry_data,
         log_entry_types let) override;
     virtual void log_entry_value(std::ostream&, boost::unit_test::const_string value) override;
     virtual void log_entry_finish(std::ostream&) override;
 
-    virtual void entry_context_start(std::ostream&, boost::unit_test::log_level) override;
-    virtual void log_entry_context(std::ostream&, boost::unit_test::log_level, boost::unit_test::const_string) override;
-    virtual void entry_context_finish(std::ostream&, boost::unit_test::log_level) override;
+    void entry_context_start(std::ostream&, boost::unit_test::log_level) override;
+    virtual void log_entry_context(std::ostream&, boost::unit_test::const_string);
+    virtual void entry_context_finish(std::ostream&);
+
+#if BOOST_VERSION >= 106500
+     // Since v1.65.0 the log level is passed to the formatters for the contexts
+     // See boostorg/test.git:fcb302b66ea09c25f0682588d22fbfdf59eac0f7
+     void log_entry_context(std::ostream& os, boost::unit_test::log_level, boost::unit_test::const_string ctx) override {
+         log_entry_context(os, ctx);
+     }
+     void entry_context_finish(std::ostream& os, boost::unit_test::log_level) override {
+         entry_context_finish(os);
+     }
+#endif
 };
 
 // Fake fixture to register formatter
@@ -101,14 +112,9 @@ struct TeamcityFormatterRegistrar {
 
 BOOST_GLOBAL_FIXTURE(TeamcityFormatterRegistrar);
 
-// Formatter implementation
-static std::string toString(boost::unit_test::const_string bstr) {
-    std::stringstream ss;
-
-    ss << bstr;
-
-    return ss.str();
-}
+// Dummy method used to keep object file in case of static library linking
+// See README.md and https://github.com/JetBrains/teamcity-cpp/pull/19
+void TeamcityGlobalFixture() {}
 
 TeamcityBoostLogFormatter::TeamcityBoostLogFormatter(const std::string &_flowId)
 : flowId(_flowId)
@@ -124,7 +130,7 @@ void TeamcityBoostLogFormatter::log_start(std::ostream &/*out*/, boost::unit_tes
 void TeamcityBoostLogFormatter::log_finish(std::ostream &/*out*/)
 {}
 
-void TeamcityBoostLogFormatter::log_build_info(std::ostream &/*out*/)
+void TeamcityBoostLogFormatter::log_build_info(std::ostream &/*out*/, bool)
 {}
 
 void TeamcityBoostLogFormatter::test_unit_start(std::ostream &out, boost::unit_test::test_unit const& tu) {
@@ -165,14 +171,13 @@ void TeamcityBoostLogFormatter::test_unit_skipped(std::ostream &/*out*/, boost::
 
 void TeamcityBoostLogFormatter::test_unit_skipped(std::ostream &, boost::unit_test::test_unit const& tu, boost::unit_test::const_string reason)
 {
-    messages.testIgnored(tu.p_name, toString(reason), flowId);
+    messages.testIgnored(tu.p_name, std::string(reason.begin(), reason.end()), flowId);
 }
 
 void TeamcityBoostLogFormatter::log_exception(std::ostream &out, boost::unit_test::log_checkpoint_data const &, boost::unit_test::const_string explanation) {
-    std::string what = toString(explanation);
-
-    out << what << std::endl;
-    currentDetails += what + "\n";
+    out << explanation << std::endl;
+    currentDetails.append(explanation.begin(), explanation.end());
+    currentDetails += "\n";
 }
 
 void TeamcityBoostLogFormatter::log_exception_start(std::ostream &out, boost::unit_test::log_checkpoint_data const &data, const boost::execution_exception& excpt) {
@@ -194,7 +199,7 @@ void TeamcityBoostLogFormatter::log_entry_start(std::ostream & out, boost::unit_
 
 void TeamcityBoostLogFormatter::log_entry_value(std::ostream &out, boost::unit_test::const_string value) {
     out << value;
-    currentDetails += toString(value);
+    currentDetails.append(value.begin(), value.end());
 }
 
 void TeamcityBoostLogFormatter::log_entry_finish(std::ostream &out) {
@@ -208,12 +213,13 @@ void TeamcityBoostLogFormatter::entry_context_start(std::ostream &out, boost::un
     currentContextDetails = initial_msg;
 }
 
-void TeamcityBoostLogFormatter::log_entry_context(std::ostream &out, boost::unit_test::log_level, boost::unit_test::const_string ctx) {
+void TeamcityBoostLogFormatter::log_entry_context(std::ostream &out, boost::unit_test::const_string ctx) {
     out << "\n " << ctx;
-    currentContextDetails += "\n " + toString(ctx);
+    currentContextDetails += "\n ";
+    currentContextDetails.append(ctx.begin(), ctx.end());
 }
 
-void TeamcityBoostLogFormatter::entry_context_finish(std::ostream &out, boost::unit_test::log_level) {
+void TeamcityBoostLogFormatter::entry_context_finish(std::ostream &out) {
     out.flush();
     messages.testOutput(CURRENT_TEST_NAME, currentContextDetails, flowId, TeamcityMessages::StdErr);
 }
