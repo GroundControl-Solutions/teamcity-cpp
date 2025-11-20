@@ -17,7 +17,7 @@ target_compile_definitions(
 
 target_link_libraries(
     boost_test PRIVATE
-    ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY}
+    Boost::unit_test_framework
   )
 
 render_test_runner(
